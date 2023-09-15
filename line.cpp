@@ -1,14 +1,13 @@
 #include "line.h"
 #include "utf8.h"
 #include "util.h"
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 /* escape sequence */
 const char *backspace = "\010";
-
 
 /* line edit functions
  *
@@ -63,10 +62,13 @@ const char *backspace = "\010";
  */
 
 /* utility functions */
-void line_init(struct line_t *line) {
-  memset(line->cells, '\0', sizeof(uint32_t) * MAX_CELLS);
-  line->cursor.insert = 0;
-  line->cursor.preedit = 0;
+line_t::line_t() {
+  memset(this->cells, '\0', sizeof(uint32_t) * MAX_CELLS);
+  this->cursor.insert = 0;
+  this->cursor.preedit = 0;
+}
+
+line_t::~line_t(){
 }
 
 int line_length(struct line_t *line) { return line->cursor.insert; }

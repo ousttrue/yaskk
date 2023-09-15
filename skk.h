@@ -13,14 +13,19 @@ enum skk_mode_t {
   MODE_SELECT,
 };
 
-/* struct for skk */
+// struct for skk
 struct skk_t {
-  int fd;               /* master of pseudo terminal */
-  enum skk_mode_t mode; /* skk mode */
+  // master of pseudo terminal
+  int fd = -1;
+  // skk mode
+  enum skk_mode_t mode = MODE_ASCII;
+
   /* for line edit */
-  struct line_t current; /* current line status */
-  struct line_t next;    /* next line status */
-  bool need_flush;       /* output all characters and clear line buffer */
+  /* current line status */
+  line_t current;
+  /* next line status */
+  line_t next;
+  bool need_flush = false; /* output all characters and clear line buffer */
   /* for candidate */
   struct dict_t dict;
   struct parse_t *select;

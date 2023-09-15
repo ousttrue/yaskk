@@ -56,27 +56,6 @@ int eclose(int fd) {
   return ret;
 }
 
-FILE *efopen(const char *path, char *mode) {
-  FILE *fp;
-  errno = 0;
-
-  if ((fp = fopen(path, mode)) == NULL) {
-    logging(ERROR, "couldn't open \"%s\"\n", path);
-    logging(ERROR, "fopen: %s\n", strerror(errno));
-  }
-  return fp;
-}
-
-int efclose(FILE *fp) {
-  int ret;
-  errno = 0;
-
-  if ((ret = fclose(fp)) < 0)
-    logging(ERROR, "fclose: %s\n", strerror(errno));
-
-  return ret;
-}
-
 void *ecalloc(size_t nmemb, size_t size) {
   void *ptr;
   errno = 0;
@@ -262,60 +241,6 @@ int eexecl(const char *path)
         return ret;
 }
 */
-
-/* parse_arg functions */
-void parse_reset(struct parse_t *pt) {
-  int i;
-
-  pt->argc = 0;
-  for (i = 0; i < MAX_ARGS; i++)
-    pt->argv[i] = NULL;
-}
-
-void parse_add(struct parse_t *pt, char *cp) {
-  if (pt->argc >= MAX_ARGS)
-    return;
-
-  // logging(DEBUG, "argv[%d]: %s\n", pt->argc, (cp == NULL) ? "NULL": cp);
-
-  pt->argv[pt->argc] = cp;
-  pt->argc++;
-}
-
-void parse_arg(char *buf, struct parse_t *pt, int delim, int(is_valid)(int c)) {
-  /*
-          v..........v d           v.....v d v.....v ... d
-          (valid char) (delimiter)
-          argv[0]                  argv[1]   argv[2] ...   argv[argc - 1]
-  */
-  size_t i, length;
-  char *cp, *vp;
-
-  if (buf == NULL)
-    return;
-
-  length = strlen(buf);
-  // logging(DEBUG, "parse_arg() length:%u\n", (unsigned) length);
-
-  vp = NULL;
-  for (i = 0; i < length; i++) {
-    cp = buf + i;
-
-    if (vp == NULL && is_valid(*cp))
-      vp = cp;
-
-    if (*cp == delim) {
-      *cp = '\0';
-      parse_add(pt, vp);
-      vp = NULL;
-    }
-
-    if (i == (length - 1) && (vp != NULL || *cp == '\0'))
-      parse_add(pt, vp);
-  }
-
-  // logging(DEBUG, "argc:%d\n", pt->argc);
-}
 
 void print_arg(struct parse_t *pt) {
   fprintf(stderr, "\targc:%d\n", pt->argc);

@@ -18,12 +18,17 @@ struct cursor_t {
   int insert;  /* character insert position */
   int preedit; /* position of first preedit character */
 };
+
 struct line_t {
   uint32_t cells[MAX_CELLS]; /* UCS2 codepoint */
   cursor_t cursor;
+
+  line_t();
+  ~line_t();
+  line_t(const line_t &) = delete;
+  line_t &operator=(const line_t &) = delete;
 };
 
-void line_init(struct line_t *line);
 void toggle_cursive_square(struct line_t *line);
 void append_ucs_char(struct line_t *line, int index, uint32_t ucs);
 int preedit_length(struct line_t *line);

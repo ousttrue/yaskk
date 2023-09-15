@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 # usage: ./dict_builder.sh DICT_SIZE
 
 TMP_FILE="/tmp/tmp_dict"

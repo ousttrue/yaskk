@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <vector>
 
 enum {
   MAX_ARGS = 256,
@@ -10,23 +12,29 @@ enum {
 struct parse_t {
   int argc;
   char *argv[MAX_ARGS];
+
+  void reset();
+  void add(char *cp);
+  void parse_arg(char *buf, int delim, int(is_valid)(int c));
 };
 
 /* struct for dictionary */
 struct dict_entry_t {
-  char *lbuf;
-  char *keyword;
-  struct parse_t candidate;
+  // std::string lbuf;
+  std::string keyword;
+  parse_t candidate;
+
+  bool parse(char *lbuf, int length);
 };
 
 struct dict_t {
-  struct dict_entry_t *table; /* dynamic array */
-  int entry_count;            /* num of real entry size */
-  int table_size;             /* num of allocated entry size */
+  std::vector<dict_entry_t> table; /* dynamic array */
+
+  dict_t();
+  ~dict_t();
+  dict_t(const dict_t &) = delete;
+  dict_t &operator=(const dict_t &) = delete;
+  void load(const char *file);
 };
 
-struct dict_entry_t *dict_load(const char *file, int *table_size,
-                               int *entry_count);
-
-struct dict_entry_t *dict_search(struct dict_t *dict, const char *keyword,
-                                 int length);
+struct dict_entry_t *dict_search(dict_t *dict, const char *keyword, int length);

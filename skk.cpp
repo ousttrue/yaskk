@@ -18,7 +18,6 @@ const auto SELECT_TIMEOUT = 15000;
 const auto INPUT_THRESHLD = 6;
 
 /* load files */
-const char *skkdict_file = "/path/to/dict";
 
 const char *mode2str[] = {
     [MODE_ASCII] = "MODE_ASCII",   [MODE_CURSIVE] = "MODE_CURSIVE",
@@ -41,15 +40,6 @@ static void sig_handler(int signo) {
 
 /* skk init/die functions */
 skk_t::skk_t() {
-  this->fd = -1;
-  this->mode = MODE_ASCII;
-
-  line_init(&this->current);
-  line_init(&this->next);
-  this->need_flush = false;
-
-  this->dict.table =
-      dict_load(skkdict_file, &this->dict.table_size, &this->dict.entry_count);
   this->select = NULL;
   this->index = 0;
 
@@ -70,11 +60,6 @@ skk_t::~skk_t() {
   sigact.sa_handler = SIG_DFL;
   sigaction(SIGCHLD, &sigact, NULL);
   sigaction(SIGWINCH, &sigact, NULL);
-
-  for (int i = 0; i < this->dict.entry_count; i++) {
-    free(this->dict.table[i].lbuf);
-  }
-  free(this->dict.table);
 }
 
 /* parse functions */
@@ -101,11 +86,11 @@ bool skk_preedit(struct skk_t *skk, uint8_t ch) {
   if ((entry = dict_search(&skk->dict, preedit_str, strlen(preedit_str))) !=
       NULL) {
     if (VERBOSE) {
-      logging(DEBUG, "entry:%s\n", entry->keyword);
+      logging(DEBUG, "entry:%s\n", entry->keyword.c_str());
       print_arg(&entry->candidate);
     }
 
-    if (strlen(entry->keyword) == strlen(preedit_str)) {
+    if (entry->keyword.size() == strlen(preedit_str)) {
       logging(DEBUG, "completely matched!\n");
       remove_chars(&skk->next, skk->next.cursor.preedit,
                    skk->next.cursor.insert - 1);
