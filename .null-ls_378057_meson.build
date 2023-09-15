@@ -19,6 +19,8 @@ executable(
     install: true,
     c_args: [
         ['-Werror-implicit-function-declaration',
+
+
 '-D_XOPEN_SOURCE=600',
           ],
     ],

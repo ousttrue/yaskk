@@ -42,8 +42,12 @@ struct skk_t {
     char str[LINE_LEN_MAX]; /* cook + append.str: restored string after append
                                -> cook mode */
   } append;
-};
 
-void skk_init(skk_t *skk);
-void skk_die(skk_t *skk);
-void parse(skk_t *skk, uint8_t *buf, ssize_t size);
+  skk_t();
+  skk_t(const skk_t &) = delete;
+  skk_t &operator=(const skk_t &) = delete;
+  ~skk_t();
+  void mainloop();
+  void parse(uint8_t *buf, ssize_t size);
+  void fork(const char *cmd, char *const argv[]);
+};

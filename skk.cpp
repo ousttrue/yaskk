@@ -4,10 +4,18 @@
 #include "key.h"
 #include "util.h"
 #include <ctype.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
+
+const auto SELECT_TIMEOUT = 15000;
+const auto INPUT_THRESHLD = 6;
 
 /* load files */
 const char *skkdict_file = "/path/to/dict";
@@ -18,28 +26,55 @@ const char *mode2str[] = {
     [MODE_APPEND] = "MODE_APPEND", [MODE_SELECT] = "MODE_SELECT",
 };
 
-/* skk init/die functions */
-void skk_init(struct skk_t *skk) {
-  skk->fd = -1;
-  skk->mode = MODE_ASCII;
+/* global */
+volatile sig_atomic_t LoopFlag = true;
+volatile sig_atomic_t WindowResized = false;
 
-  line_init(&skk->current);
-  line_init(&skk->next);
-  skk->need_flush = false;
-
-  skk->dict.table =
-      dict_load(skkdict_file, &skk->dict.table_size, &skk->dict.entry_count);
-  skk->select = NULL;
-  skk->index = 0;
-
-  skk->append.ch = '\0';
-  memset(skk->append.str, '\0', LINE_LEN_MAX);
+static void sig_handler(int signo) {
+  if (signo == SIGCHLD) {
+    wait(NULL);
+    LoopFlag = false;
+  } else if (signo == SIGWINCH) {
+    WindowResized = true;
+  }
 }
 
-void skk_die(struct skk_t *skk) {
-  for (int i = 0; i < skk->dict.entry_count; i++)
-    free(skk->dict.table[i].lbuf);
-  free(skk->dict.table);
+/* skk init/die functions */
+skk_t::skk_t() {
+  this->fd = -1;
+  this->mode = MODE_ASCII;
+
+  line_init(&this->current);
+  line_init(&this->next);
+  this->need_flush = false;
+
+  this->dict.table =
+      dict_load(skkdict_file, &this->dict.table_size, &this->dict.entry_count);
+  this->select = NULL;
+  this->index = 0;
+
+  this->append.ch = '\0';
+  memset(this->append.str, '\0', LINE_LEN_MAX);
+
+  struct sigaction sigact;
+  memset(&sigact, 0, sizeof(struct sigaction));
+  sigact.sa_handler = sig_handler;
+  sigact.sa_flags = SA_RESTART;
+  esigaction(SIGCHLD, &sigact, NULL);
+  esigaction(SIGWINCH, &sigact, NULL);
+}
+
+skk_t::~skk_t() {
+  struct sigaction sigact;
+  memset(&sigact, 0, sizeof(struct sigaction));
+  sigact.sa_handler = SIG_DFL;
+  sigaction(SIGCHLD, &sigact, NULL);
+  sigaction(SIGWINCH, &sigact, NULL);
+
+  for (int i = 0; i < this->dict.entry_count; i++) {
+    free(this->dict.table[i].lbuf);
+  }
+  free(this->dict.table);
 }
 
 /* parse functions */
@@ -414,55 +449,113 @@ void mode_append(struct skk_t *skk, uint8_t ch) {
   }
 }
 
-void parse(struct skk_t *skk, uint8_t *buf, ssize_t size) {
-  ssize_t i;
-  uint8_t ch;
+void skk_t::parse(uint8_t *buf, ssize_t size) {
 
-  for (i = 0; i < size; i++) {
-    ch = buf[i];
-    logging(DEBUG, "parsing... ch:0x%.2X current mode:[%d]%s\n", ch, skk->mode,
-            mode2str[skk->mode]);
+  for (int i = 0; i < size; i++) {
+    uint8_t ch = buf[i];
+    logging(DEBUG, "parsing... ch:0x%.2X current mode:[%d]%s\n", ch, this->mode,
+            mode2str[this->mode]);
 
     /* if "ch" is not ascii (0x00 - 0x7F), pass through */
     if (ch > 0x7F) {
       logging(DEBUG, "not ascii character(0x%.2X), pass through\n", ch);
-      ewrite(skk->fd, &ch, 1);
+      ewrite(this->fd, &ch, 1);
       continue;
     }
 
     /* check mode change*/
 
     /* mode related process */
-    if (mode_func[skk->mode])
-      mode_func[skk->mode](skk, ch);
+    if (mode_func[this->mode]) {
+      mode_func[this->mode](this, ch);
+    }
 
     /*
     do {
-            if (mode_func[skk->mode])
-                    mode_func[skk->mode](skk, ch);
-    } while (skk->mode_changed);
+            if (mode_func[this->mode])
+                    mode_func[this->mode](skk, ch);
+    } while (this->mode_changed);
     */
 
     /*
-    if (skk->mode == MODE_ASCII)
+    if (this->mode == MODE_ASCII)
             mode_ascii(skk, ch);
-    if (skk->mode == MODE_COOK)
+    if (this->mode == MODE_COOK)
             mode_cook(skk, ch);
-    if (skk->mode == MODE_SELECT)
+    if (this->mode == MODE_SELECT)
             mode_select(skk, ch);
-    if (skk->mode == MODE_APPEND)
+    if (this->mode == MODE_APPEND)
             mode_append(skk, ch);
-    if (skk->mode == MODE_CURSIVE || skk->mode == MODE_SQUARE)
+    if (this->mode == MODE_CURSIVE || this->mode == MODE_SQUARE)
             mode_cursive_square(skk, ch);
     */
   }
 
   if (VERBOSE) {
     logging(DEBUG, "current line\n");
-    line_show(&skk->current);
+    line_show(&this->current);
     logging(DEBUG, "next line\n");
-    line_show(&skk->next);
+    line_show(&this->next);
   }
 
-  line_update(&skk->current, &skk->next, &skk->need_flush, skk->fd);
+  line_update(&this->current, &this->next, &this->need_flush, this->fd);
+}
+
+static void check_fds(fd_set *fds, int stdin, int master) {
+  struct timeval tv;
+
+  FD_ZERO(fds);
+  FD_SET(stdin, fds);
+  FD_SET(master, fds);
+  tv.tv_sec = 0;
+  tv.tv_usec = SELECT_TIMEOUT;
+  eselect(master + 1, fds, NULL, NULL, &tv);
+}
+
+void skk_t::mainloop() {
+  /* main loop */
+  uint8_t buf[1024];
+  fd_set fds;
+  while (LoopFlag) {
+    check_fds(&fds, STDIN_FILENO, this->fd);
+
+    /* data arrived from stdin */
+    if (FD_ISSET(STDIN_FILENO, &fds)) {
+      ssize_t size = read(STDIN_FILENO, buf, BUFSIZE);
+
+      if (size < INPUT_THRESHLD)
+        parse(buf, size);
+      else /* large data: maybe not manual input */
+        ewrite(this->fd, buf, size);
+    }
+
+    /* data arrived from pseudo terminal */
+    if (FD_ISSET(this->fd, &fds)) {
+      ssize_t size = read(this->fd, buf, BUFSIZE);
+      if (size > 0)
+        ewrite(STDOUT_FILENO, buf, size);
+    }
+
+    /* if receive SIGWINCH, reach here */
+    if (WindowResized) {
+      WindowResized = false;
+      struct winsize wsize;
+      ioctl(STDIN_FILENO, TIOCGWINSZ, &wsize);
+      ioctl(this->fd, TIOCSWINSZ, &wsize);
+    }
+  }
+}
+
+void skk_t::fork(const char *cmd, char *const argv[]) {
+  struct winsize wsize;
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &wsize) < 0) {
+    logging(ERROR, "ioctl: TIOCWINSZ failed\n");
+  }
+
+  auto pid = eforkpty(&fd, NULL, NULL, &wsize);
+  if (pid == 0) {
+    /* child */
+    eexecvp(cmd, argv);
+    // eexecvp(exec_cmd, (const char *[]){exec_cmd, NULL});
+  }
 }
