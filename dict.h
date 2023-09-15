@@ -3,18 +3,14 @@
 #include <vector>
 
 enum {
-  MAX_ARGS = 256,
   COMPARE_ALL_STRING = 0,
   BUFSIZE = 1024,
 };
 
 /* struct for parse_arg() */
 struct parse_t {
-  int argc;
-  char *argv[MAX_ARGS];
-
+  std::vector<std::string> argv;
   void reset();
-  void add(char *cp);
   void parse_arg(char *buf, int delim, int(is_valid)(int c));
 };
 

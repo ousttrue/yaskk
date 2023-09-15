@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const auto skkdict_file = "~/.skk/SKK-JISYO.L";
+const auto skkdict_file = "jisyo.M";
 
 enum {
   INIT_ENTRY = 8,
@@ -17,12 +17,7 @@ enum {
 static int not_tab(int c) { return (c != '\t') ? true : false; }
 
 /* parse_arg functions */
-void parse_t::reset() {
-  this->argc = 0;
-  for (int i = 0; i < MAX_ARGS; i++) {
-    this->argv[i] = NULL;
-  }
-}
+void parse_t::reset() { argv.clear(); }
 
 bool dict_entry_t::parse(char *lbuf, int length) {
   if (length == 0) {
@@ -39,22 +34,11 @@ bool dict_entry_t::parse(char *lbuf, int length) {
   this->candidate.reset();
   this->candidate.parse_arg(cp + 1, '\t', not_tab);
   // illegal entry
-  if (this->candidate.argc <= 0) {
+  if (this->candidate.argv.empty()) {
     return false;
   }
 
   return true;
-}
-
-/* parse_arg functions */
-void parse_t::add(char *cp) {
-  if (this->argc >= MAX_ARGS) {
-    return;
-  }
-
-  // logging(DEBUG, "argv[%d]: %s\n", pt->argc, (cp == NULL) ? "NULL": cp);
-  this->argv[this->argc] = cp;
-  this->argc++;
 }
 
 void parse_t::parse_arg(char *buf, int delim, int(is_valid)(int c)) {
@@ -78,12 +62,12 @@ void parse_t::parse_arg(char *buf, int delim, int(is_valid)(int c)) {
 
     if (*cp == delim) {
       *cp = '\0';
-      add(vp);
+      this->argv.push_back(vp);
       vp = NULL;
     }
 
     if (i == (length - 1) && (vp != NULL || *cp == '\0')) {
-      add(vp);
+      this->argv.push_back(vp);
     }
   }
 

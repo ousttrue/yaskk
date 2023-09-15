@@ -95,8 +95,9 @@ bool skk_preedit(struct skk_t *skk, uint8_t ch) {
       remove_chars(&skk->next, skk->next.cursor.preedit,
                    skk->next.cursor.insert - 1);
       append_utf8_str(&skk->next, skk->next.cursor.preedit,
-                      (skk->mode == MODE_SQUARE) ? entry->candidate.argv[1]
-                                                 : entry->candidate.argv[0]);
+                      (skk->mode == MODE_SQUARE)
+                          ? entry->candidate.argv[1].c_str()
+                          : entry->candidate.argv[0].c_str());
 
       /* special case: double consonant (tt, kk, bb et al) -> U+3063(or U+30C3)
        * + single consonant */
@@ -146,7 +147,7 @@ void skk_select(struct skk_t *skk, uint8_t ch) {
         NULL) {
       skk->select = &entry->candidate;
       if (VERBOSE) {
-        logging(DEBUG, "entry:%s\n", entry->keyword);
+        logging(DEBUG, "entry:%s\n", entry->keyword.c_str());
         print_arg(skk->select);
       }
 
@@ -155,10 +156,10 @@ void skk_select(struct skk_t *skk, uint8_t ch) {
     }
   } else {
     if (ch == KEY_NEXT || ch == CTRL_N) {
-      skk->index = (skk->index + 1) % skk->select->argc;
+      skk->index = (skk->index + 1) % skk->select->argv.size();
     } else if (ch == KEY_PREV || ch == CTRL_P) {
       if (skk->index <= 0)
-        skk->index = skk->select->argc - 1;
+        skk->index = skk->select->argv.size() - 1;
       else
         skk->index--;
     }
@@ -169,7 +170,7 @@ void skk_select(struct skk_t *skk, uint8_t ch) {
     if (line_length(&skk->next) > 1)
       remove_chars(&skk->next, 1, skk->next.cursor.insert - 1);
 
-    append_utf8_str(&skk->next, 1, skk->select->argv[skk->index]);
+    append_utf8_str(&skk->next, 1, skk->select->argv[skk->index].c_str());
     if (skk->append.ch != '\0')
       append_utf8_str(&skk->next, skk->next.cursor.insert, skk->append.str);
   }

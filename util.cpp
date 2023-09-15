@@ -243,8 +243,8 @@ int eexecl(const char *path)
 */
 
 void print_arg(struct parse_t *pt) {
-  fprintf(stderr, "\targc:%d\n", pt->argc);
+  fprintf(stderr, "\targc:%d\n", pt->argv.size());
 
-  for (int i = 0; i < pt->argc; i++)
-    fprintf(stderr, "\targv[%d]: %s\n", i, pt->argv[i]);
+  for (int i = 0; i < pt->argv.size(); i++)
+    fprintf(stderr, "\targv[%d]: %s\n", i, pt->argv[i].c_str());
 }
