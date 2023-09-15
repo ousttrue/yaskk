@@ -11,7 +11,7 @@
 volatile sig_atomic_t LoopFlag = true;
 volatile sig_atomic_t WindowResized = false;
 
-void sig_handler(int signo) {
+static void sig_handler(int signo) {
   if (signo == SIGCHLD) {
     wait(NULL);
     LoopFlag = false;
@@ -20,9 +20,8 @@ void sig_handler(int signo) {
   }
 }
 
-void set_rawmode(int fd, struct termios *save_tm) {
+static void set_rawmode(int fd, struct termios *save_tm) {
   struct termios tm;
-
   tm = *save_tm;
   tm.c_iflag = tm.c_oflag = 0;
   tm.c_cflag &= ~CSIZE;
@@ -33,30 +32,37 @@ void set_rawmode(int fd, struct termios *save_tm) {
   etcsetattr(fd, TCSAFLUSH, &tm);
 }
 
-void tty_init(struct termios *save_tm) {
-  struct sigaction sigact;
+struct TtyImpl {
+  struct termios save_tm;
 
-  memset(&sigact, 0, sizeof(struct sigaction));
-  sigact.sa_handler = sig_handler;
-  sigact.sa_flags = SA_RESTART;
-  esigaction(SIGCHLD, &sigact, NULL);
-  esigaction(SIGWINCH, &sigact, NULL);
+  TtyImpl() {
+    struct sigaction sigact;
+    memset(&sigact, 0, sizeof(struct sigaction));
 
-  etcgetattr(STDIN_FILENO, save_tm);
-  set_rawmode(STDIN_FILENO, save_tm);
-}
+    sigact.sa_handler = sig_handler;
+    sigact.sa_flags = SA_RESTART;
+    esigaction(SIGCHLD, &sigact, NULL);
+    esigaction(SIGWINCH, &sigact, NULL);
 
-void tty_die(struct termios *save_tm) {
-  struct sigaction sigact;
+    etcgetattr(STDIN_FILENO, &save_tm);
+    set_rawmode(STDIN_FILENO, &save_tm);
+  }
 
-  memset(&sigact, 0, sizeof(struct sigaction));
-  sigact.sa_handler = SIG_DFL;
-  sigaction(SIGCHLD, &sigact, NULL);
-  sigaction(SIGWINCH, &sigact, NULL);
+  ~TtyImpl() {
+    struct sigaction sigact;
+    memset(&sigact, 0, sizeof(struct sigaction));
+    sigact.sa_handler = SIG_DFL;
+    sigaction(SIGCHLD, &sigact, NULL);
+    sigaction(SIGWINCH, &sigact, NULL);
 
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, save_tm);
-  fflush(stdout);
-}
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &save_tm);
+    fflush(stdout);
+  }
+};
+
+Tty::Tty() : m_impl(new TtyImpl) {}
+
+Tty::~Tty() { delete m_impl; }
 
 void fork_and_exec(int *master, const char *cmd, char *const argv[]) {
   struct winsize wsize;

@@ -30,8 +30,18 @@ enum {
   LBUFSIZE = 1024,
 };
 
-void tty_init(struct termios *save_tm);
-void tty_die(struct termios *save_tm);
+class Tty {
+  struct TtyImpl *m_impl;
+
+public:
+  Tty();
+  Tty(const Tty &) = delete;
+  Tty &operator=(const Tty &) = delete;
+  ~Tty();
+};
+
+// void tty_init(struct termios *save_tm);
+// void tty_die(struct termios *save_tm);
 void fork_and_exec(int *master, const char *cmd, char *const argv[]);
 void check_fds(fd_set *fds, int stdin, int master);
 
