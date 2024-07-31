@@ -1,5 +1,11 @@
 const std = @import("std");
 
+const flags = [_][]const u8{
+    "-std=c23",
+    "-D_XOPEN_SOURCE=600",
+    "-DPATH_TO_DICT=\"~/.skk\"",
+};
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -12,11 +18,14 @@ pub fn build(b: *std.Build) void {
     });
     exe.addCSourceFiles(.{
         .files = &.{
+            "dict.c",
+            "line.c",
+            "skk.c",
+            "utf8.c",
+            "util.c",
             "yaskk.c",
         },
-        .flags = &.{
-            "-DPATH_TO_DICT=\"~/.skk\"",
-        },
+        .flags = &flags,
     });
     exe.linkLibC();
     b.installArtifact(exe);
@@ -37,4 +46,19 @@ pub fn build(b: *std.Build) void {
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_exe_unit_tests.step);
+
+    const sortdict = b.addExecutable(.{
+        .target = target,
+        .optimize = optimize,
+        .name = "sortdict",
+    });
+    sortdict.addCSourceFiles(.{
+        .files = &.{
+            "tools/sortdict.c",
+            "util.c",
+        },
+        .flags = &flags,
+    });
+    sortdict.linkLibC();
+    b.installArtifact(sortdict);
 }

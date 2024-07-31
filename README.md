@@ -2,6 +2,16 @@
 
 yet another skk for terminal
 
+## build.zig
+
+`zig-0.13.0`
+
+```
+$ zig build
+$ tools/dict_builder.sh M tools/roma2kana > SKK-JISYO.M
+$ ./zig-out/bin/yaskk
+```
+
 ## description
 
 simple skk (japanese input method)

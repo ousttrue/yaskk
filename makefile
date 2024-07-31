@@ -4,7 +4,7 @@ LDFLAGS ?=
 
 HDR = *.h
 DST = yaskk
-SRC = yaskk.c
+SRC = yaskk.c skk.c
 
 all: $(DST)
 

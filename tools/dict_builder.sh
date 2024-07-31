@@ -18,9 +18,9 @@ if test "$#" -lt 2; then
 	exit 1
 fi
 
-if test ! -x sortdict; then
-	make
-fi
+# if test ! -x sortdict; then
+# 	make
+# fi
 
 case "$1" in
 s|S)
@@ -51,4 +51,4 @@ zcat $DICT_FILE \
 	| sed 's|;[^;]*/|/|g' \
 	| sed 's| /|\t|; s|/$||; s|/|\t|g' >> $TMP_FILE
 
-cat $TMP_FILE | ./sortdict
+cat $TMP_FILE | ./zig-out/bin/sortdict
