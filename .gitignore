@@ -20,3 +20,6 @@
 yaskk
 yass
 sortdict
+
+/.zig-cache/
+/zig-out/

@@ -2,7 +2,7 @@
 char * const shell_cmd = "/bin/bash";
 
 /* load files */
-const char *skkdict_file  = "/path/to/dict";
+const char *skkdict_file  = "SKK-JISYO.M";
 
 /* mark: these strings must be ONE character and non ascii */
 /*

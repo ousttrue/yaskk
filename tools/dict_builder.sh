@@ -47,7 +47,7 @@ cat $2 | awk '{if (NF == 3) print $0}' > $TMP_FILE
 # remove comment of candidate
 zcat $DICT_FILE \
 	| nkf -w -Lu \
-	| LANG=C grep -v "^[[:print:]].*" \
+	| grep -v -P "^[\x{0000}-\x{00ff}]" \
 	| sed 's|;[^;]*/|/|g' \
 	| sed 's| /|\t|; s|/$||; s|/|\t|g' >> $TMP_FILE
 
